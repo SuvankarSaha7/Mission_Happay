@@ -1,77 +1,80 @@
-
-# import flask
+import os
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 from flask_cors import CORS
+from dotenv import load_dotenv
 
+# Load .env only for local development
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
-app.config["SQLALCHEMY_DATABASE_URI"]="postgresql://neondb_owner:npg_HAlpP4EC6YZT@ep-dark-sky-ahi1mneg-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
+# Read DB URL from env
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise ValueError("❌ DATABASE_URL is missing! Add it in Render Environment Variables.")
+
+app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 
-# making division table
+
+# Database Models
 class Division(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name=db.Column(db.String(100))
+    name = db.Column(db.String(100))
+
 
 class Unit(db.Model):
-    id = db.Column(db.Integer,primary_key=True)
-    unit_name=db.Column(db.String(100))
+    id = db.Column(db.Integer, primary_key=True)
+    unit_name = db.Column(db.String(100))
     division_id = db.Column(db.Integer, db.ForeignKey('division.id'))
 
 
+# Create tables
 with app.app_context():
     db.create_all()
 
+
+# Routes
 @app.route("/checkup_db")
 def checkup_db():
     try:
-        db.session.execute(text("SELECT 1")) # this line means that if the backend is connect to DB successfully or not 
-        return {"Status":"Success","message":"Database connected successfull"}
+        db.session.execute(text("SELECT 1"))
+        return {"Status": "Success", "message": "Database connected successfully"}
     except Exception as e:
-        return {"Status":"Error", "message":str(e)}
-    
-@app.route("/divisions",methods=["GET"]) 
-def divsions():
+        return {"Status": "Error", "message": str(e)}
+
+
+@app.route("/divisions", methods=["GET"])
+def divisions():
     try:
-        division = Division.query.all() # here "query" is inbuild method when we define model then this type of properties or method already inherits from the model 
-        #Division.query → query builder
-        #Division.query.all() → get all rows
-        #Division.query.get(id) → get by primary key
-
-        # Division.query.filter_by(name="HR") → filtering
-
-        # Division.query.first() → first row
-
-        # Division.query.count() → total row
-        #
-        res = [{"id":d.id,"name":d.name} for d in division]
+        division_list = Division.query.all()
+        res = [{"id": d.id, "name": d.name} for d in division_list]
         return jsonify(res)
     except Exception as e:
-        return {"Status":"Error","message":str(e)}
-    
+        return {"Status": "Error", "message": str(e)}
 
 
-
-@app.route("/divisions/<div_name>" , methods=["POST"])
-def divisions(div_name):
+@app.route("/divisions/<div_name>", methods=["POST"])
+def create_division(div_name):
     try:
-        div = Division(name = div_name)
+        div = Division(name=div_name)
         db.session.add(div)
         db.session.commit()
-        return {"Status":"ok","message":f"division {div_name} create in DB"}
+        return {"Status": "ok", "message": f"Division {div_name} created"}
     except Exception as e:
-        return {"Status":"error","message":str(e)}
+        return {"Status": "Error", "message": str(e)}
 
 
-@app.route('/')
+@app.route("/")
 def home():
     return "✅ Flask is working excellent!"
 
+
 if __name__ == '__main__':
     app.run(debug=True)
-
-
