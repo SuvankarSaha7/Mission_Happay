@@ -7,7 +7,7 @@ export default function HomePage() {
 
   const fetchDivisions = async () => {
     try {
-      const res = await fetch("http://localhost:5000/divisions");
+      const res = await fetch("https://mission-happay.vercel.app/divisions");
       const data = await res.json();
       setDivisions(data);
     } catch (error) {
